@@ -1,0 +1,16 @@
+.github/
+.nyc_output/
+.vscode/
+coverage/
+docs/
+src/
+test-data/
+node_modules/
+.editorconfig
+.eslintignore
+.eslintrc
+.gitignore
+npm-debug.log
+rollup.config.js
+tsconfig.esm.json
+tsconfig.json
