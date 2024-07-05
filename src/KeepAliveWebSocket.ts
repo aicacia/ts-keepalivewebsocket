@@ -9,12 +9,14 @@ export type KeepAliveWebSocketEvents = {
   error(error?: Error): void;
   disconnect(): void;
   close(): void;
+  test(a: number, b: number): void;
 };
 
 type KeepAliveWebSocketEventNames =
   EventEmitterTypes.EventNames<KeepAliveWebSocketEvents>;
 type KeepAliveWebSocketEventArguments =
   EventEmitterTypes.ArgumentMap<KeepAliveWebSocketEvents>;
+type ExtractSingleTuple<T> = T extends [infer R] ? R : T;
 
 export type KeepAliveWebSocketOptions = {
   url: () => Promise<string> | string;
@@ -82,12 +84,18 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
     });
   }
 
-  async waitOnce<K extends KeepAliveWebSocketEventNames>(event: K) {
-    return new Promise<KeepAliveWebSocketEventArguments[K]>((resolve) => {
-      this.once(event, (...args) => {
-        resolve(args);
-      });
-    });
+  waitOnce<K extends KeepAliveWebSocketEventNames>(event: K) {
+    return new Promise<ExtractSingleTuple<KeepAliveWebSocketEventArguments[K]>>(
+      (resolve) => {
+        this.once(event, (...args) => {
+          if (args.length === 1) {
+            resolve(args[0]);
+          } else {
+            resolve(args as never);
+          }
+        });
+      }
+    );
   }
 
   close(code?: number, reason?: string) {

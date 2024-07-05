@@ -36,8 +36,7 @@ tape("basic", async (assert: tape.Test) => {
     const message1Promise = websocket.waitOnce("message");
     await websocket.ready();
     websocket.send("Hello");
-    const [message1] = await message1Promise;
-    assert.equal(message1, "Hello");
+    assert.equal(await message1Promise, "Hello");
 
     const disconnectPromise = websocket.waitOnce("disconnect");
     wsServer.closeAllConnections();
@@ -46,8 +45,7 @@ tape("basic", async (assert: tape.Test) => {
     const message2Promise = websocket.waitOnce("message");
     await websocket.ready();
     websocket.send("world!");
-    const [message2] = await message2Promise;
-    assert.equal(message2, "world!");
+    assert.equal(await message2Promise, "world!");
 
     assert.end();
   } finally {

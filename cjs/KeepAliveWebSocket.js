@@ -1,9 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.KeepAliveWebSocket = void 0;
-const tslib_1 = require("tslib");
-const eventemitter3_1 = tslib_1.__importDefault(require("eventemitter3"));
-class KeepAliveWebSocket extends eventemitter3_1.default {
+const eventemitter3_1 = require("eventemitter3");
+class KeepAliveWebSocket extends eventemitter3_1.EventEmitter {
     constructor(options) {
         super();
         this.connecting = false;
@@ -55,6 +54,18 @@ class KeepAliveWebSocket extends eventemitter3_1.default {
             this.on("open", onOpen);
             this.on("error", onError);
             this.on("close", onClose);
+        });
+    }
+    waitOnce(event) {
+        return new Promise((resolve) => {
+            this.once(event, (...args) => {
+                if (args.length === 1) {
+                    resolve(args[0]);
+                }
+                else {
+                    resolve(args);
+                }
+            });
         });
     }
     close(code, reason) {

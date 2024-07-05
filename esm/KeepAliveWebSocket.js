@@ -1,4 +1,4 @@
-import EventEmitter from "eventemitter3";
+import { EventEmitter, } from "eventemitter3";
 export class KeepAliveWebSocket extends EventEmitter {
     constructor(options) {
         super();
@@ -51,6 +51,18 @@ export class KeepAliveWebSocket extends EventEmitter {
             this.on("open", onOpen);
             this.on("error", onError);
             this.on("close", onClose);
+        });
+    }
+    waitOnce(event) {
+        return new Promise((resolve) => {
+            this.once(event, (...args) => {
+                if (args.length === 1) {
+                    resolve(args[0]);
+                }
+                else {
+                    resolve(args);
+                }
+            });
         });
     }
     close(code, reason) {
