@@ -20,7 +20,9 @@ class KeepAliveWebSocket extends eventemitter3_1.EventEmitter {
         if (options.minTimeBetweenReconnectsMS) {
             this.minTimeBetweenReconnectsMS = options.minTimeBetweenReconnectsMS;
         }
-        this.connect();
+        if (options.autoconnect) {
+            this.connect();
+        }
     }
     send(data) {
         if (!this.websocket) {

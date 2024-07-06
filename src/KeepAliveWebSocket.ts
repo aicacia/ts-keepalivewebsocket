@@ -21,6 +21,7 @@ type ExtractSingleTuple<T> = T extends [infer R] ? R : T;
 export type KeepAliveWebSocketOptions = {
   url: () => Promise<string> | string;
   minTimeBetweenReconnectsMS?: number;
+  autoconnect?: boolean;
   WebSocket?: typeof WebSocket;
 };
 
@@ -45,7 +46,9 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
     if (options.minTimeBetweenReconnectsMS) {
       this.minTimeBetweenReconnectsMS = options.minTimeBetweenReconnectsMS;
     }
-    this.connect();
+    if (options.autoconnect) {
+      this.connect();
+    }
   }
 
   send(data: string | ArrayBufferLike | Blob | ArrayBufferView) {
@@ -107,7 +110,7 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
     }
   }
 
-  private async connect() {
+  async connect() {
     if (this.connecting) {
       return this;
     }

@@ -12,6 +12,7 @@ type ExtractSingleTuple<T> = T extends [infer R] ? R : T;
 export type KeepAliveWebSocketOptions = {
     url: () => Promise<string> | string;
     minTimeBetweenReconnectsMS?: number;
+    autoconnect?: boolean;
     WebSocket?: typeof WebSocket;
 };
 export declare class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
@@ -28,7 +29,7 @@ export declare class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketE
     ready(): Promise<void>;
     waitOnce<K extends KeepAliveWebSocketEventNames>(event: K): Promise<ExtractSingleTuple<EventEmitter.ArgumentMap<KeepAliveWebSocketEvents>[K]>>;
     close(code?: number, reason?: string): void;
-    private connect;
+    connect(): Promise<this>;
     private reconnect;
 }
 export {};
