@@ -111,6 +111,9 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
   }
 
   async connect() {
+    if (this.websocket) {
+      return this;
+    }
     if (this.connecting) {
       return this;
     }

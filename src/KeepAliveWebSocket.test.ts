@@ -31,6 +31,7 @@ tape("basic", async (assert: tape.Test) => {
     websocket = new KeepAliveWebSocket({
       url: () => "ws://localhost:8080",
       WebSocket: WebSocket as never,
+      autoconnect: true,
     });
 
     const message1Promise = websocket.waitOnce("message");

@@ -80,6 +80,9 @@ class KeepAliveWebSocket extends eventemitter3_1.EventEmitter {
         }
     }
     async connect() {
+        if (this.websocket) {
+            return this;
+        }
         if (this.connecting) {
             return this;
         }
