@@ -17,6 +17,7 @@ export type KeepAliveWebSocketOptions = {
 };
 export declare class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
     private url;
+    private connected;
     private connecting;
     private reconnecting;
     private closed;

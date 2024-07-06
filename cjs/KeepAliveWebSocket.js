@@ -5,6 +5,7 @@ const eventemitter3_1 = require("eventemitter3");
 class KeepAliveWebSocket extends eventemitter3_1.EventEmitter {
     constructor(options) {
         super();
+        this.connected = false;
         this.connecting = false;
         this.reconnecting = false;
         this.closed = false;
@@ -25,17 +26,22 @@ class KeepAliveWebSocket extends eventemitter3_1.EventEmitter {
         }
     }
     send(data) {
-        if (!this.websocket) {
+        var _a;
+        if (!this.connected) {
             throw new Error("WebSocket not ready");
         }
-        this.websocket.send(data);
+        (_a = this.websocket) === null || _a === void 0 ? void 0 : _a.send(data);
         return this;
     }
     ready() {
-        if (this.websocket) {
+        if (this.connected) {
             return Promise.resolve();
         }
         return new Promise((resolve, reject) => {
+            if (this.connected) {
+                resolve();
+                return;
+            }
             const removeAllListeners = () => {
                 this.off("open", onOpen);
                 this.off("error", onError);
@@ -71,6 +77,8 @@ class KeepAliveWebSocket extends eventemitter3_1.EventEmitter {
         });
     }
     close(code, reason) {
+        this.connected = false;
+        this.connecting = false;
         this.closed = true;
         if (this.websocket) {
             this.websocket.close(code, reason);
@@ -80,7 +88,7 @@ class KeepAliveWebSocket extends eventemitter3_1.EventEmitter {
         }
     }
     async connect() {
-        if (this.websocket) {
+        if (this.connected) {
             return this;
         }
         if (this.connecting) {
@@ -92,11 +100,13 @@ class KeepAliveWebSocket extends eventemitter3_1.EventEmitter {
             const websocket = new this.WebSocket(await this.url());
             const onOpen = () => {
                 websocket.removeEventListener("open", onOpen);
+                this.connected = true;
                 this.emit("open");
             };
             websocket.addEventListener("open", onOpen);
             websocket.addEventListener("close", () => {
                 this.websocket = undefined;
+                this.connected = false;
                 if (this.closed) {
                     this.emit("close");
                 }

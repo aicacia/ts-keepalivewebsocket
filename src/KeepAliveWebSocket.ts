@@ -27,6 +27,7 @@ export type KeepAliveWebSocketOptions = {
 
 export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
   private url: () => Promise<string> | string;
+  private connected = false;
   private connecting = false;
   private reconnecting = false;
   private closed = false;
@@ -52,18 +53,22 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
   }
 
   send(data: string | ArrayBufferLike | Blob | ArrayBufferView) {
-    if (!this.websocket) {
+    if (!this.connected) {
       throw new Error("WebSocket not ready");
     }
-    this.websocket.send(data);
+    this.websocket?.send(data);
     return this;
   }
 
   ready() {
-    if (this.websocket) {
+    if (this.connected) {
       return Promise.resolve();
     }
     return new Promise<void>((resolve, reject) => {
+      if (this.connected) {
+        resolve();
+        return;
+      }
       const removeAllListeners = () => {
         this.off("open", onOpen);
         this.off("error", onError);
@@ -102,6 +107,8 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
   }
 
   close(code?: number, reason?: string) {
+    this.connected = false;
+    this.connecting = false;
     this.closed = true;
     if (this.websocket) {
       this.websocket.close(code, reason);
@@ -111,7 +118,7 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
   }
 
   async connect() {
-    if (this.websocket) {
+    if (this.connected) {
       return this;
     }
     if (this.connecting) {
@@ -124,12 +131,14 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
 
       const onOpen = () => {
         websocket.removeEventListener("open", onOpen);
+        this.connected = true;
         this.emit("open");
       };
       websocket.addEventListener("open", onOpen);
 
       websocket.addEventListener("close", () => {
         this.websocket = undefined;
+        this.connected = false;
         if (this.closed) {
           this.emit("close");
         } else {
