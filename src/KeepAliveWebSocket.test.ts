@@ -32,6 +32,7 @@ tape("basic", async (assert: tape.Test) => {
       url: () => "ws://localhost:8080",
       WebSocket: WebSocket as never,
       autoconnect: true,
+      minTimeBetweenReconnectsMS: 1000,
     });
 
     const message1Promise = websocket.waitOnce("message");

@@ -16,7 +16,12 @@ type KeepAliveWebSocketEventNames =
   EventEmitterTypes.EventNames<KeepAliveWebSocketEvents>;
 type KeepAliveWebSocketEventArguments =
   EventEmitterTypes.ArgumentMap<KeepAliveWebSocketEvents>;
-type ExtractSingleTuple<T> = T extends [infer R] ? R : T;
+type EventEmitterReturnType<T> = T extends []
+  ? // biome-ignore lint/suspicious/noConfusingVoidType: <explanation>
+    void
+  : T extends [infer R]
+  ? R
+  : T;
 
 export type KeepAliveWebSocketOptions = {
   url: () => Promise<string> | string;
@@ -33,7 +38,7 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
   private closed = false;
   private websocket: WebSocket | undefined;
   private connectTime = Date.now();
-  private minTimeBetweenReconnectsMS = 5000;
+  private minTimeBetweenReconnectsMS = 0;
   private WebSocket: typeof WebSocket;
 
   constructor(options: KeepAliveWebSocketOptions) {
@@ -64,46 +69,27 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
     if (this.connected) {
       return Promise.resolve();
     }
-    return new Promise<void>((resolve, reject) => {
-      if (this.connected) {
-        resolve();
-        return;
-      }
-      const removeAllListeners = () => {
-        this.off("open", onOpen);
-        this.off("error", onError);
-        this.off("close", onClose);
-      };
-      const onOpen = () => {
-        removeAllListeners();
-        resolve();
-      };
-      const onError = () => {
-        removeAllListeners();
-        reject();
-      };
-      const onClose = () => {
-        removeAllListeners();
-        reject();
-      };
-      this.on("open", onOpen);
-      this.on("error", onError);
-      this.on("close", onClose);
-    });
+    return this.waitOnce("open");
   }
 
   waitOnce<K extends KeepAliveWebSocketEventNames>(event: K) {
-    return new Promise<ExtractSingleTuple<KeepAliveWebSocketEventArguments[K]>>(
-      (resolve) => {
-        this.once(event, (...args) => {
-          if (args.length === 1) {
+    return new Promise<
+      EventEmitterReturnType<KeepAliveWebSocketEventArguments[K]>
+    >((resolve) => {
+      this.once(event, (...args) => {
+        switch (args.length) {
+          case 0:
+            resolve(undefined as never);
+            break;
+          case 1:
             resolve(args[0]);
-          } else {
+            break;
+          default:
             resolve(args as never);
-          }
-        });
-      }
-    );
+            break;
+        }
+      });
+    });
   }
 
   close(code?: number, reason?: string) {
@@ -156,7 +142,6 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
       this.websocket = websocket;
     } catch (error) {
       this.emit("error", error as Error);
-      this.reconnect();
     } finally {
       this.connecting = false;
     }

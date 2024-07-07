@@ -8,7 +8,7 @@ export type KeepAliveWebSocketEvents = {
     test(a: number, b: number): void;
 };
 type KeepAliveWebSocketEventNames = EventEmitterTypes.EventNames<KeepAliveWebSocketEvents>;
-type ExtractSingleTuple<T> = T extends [infer R] ? R : T;
+type EventEmitterReturnType<T> = T extends [] ? void : T extends [infer R] ? R : T;
 export type KeepAliveWebSocketOptions = {
     url: () => Promise<string> | string;
     minTimeBetweenReconnectsMS?: number;
@@ -28,7 +28,7 @@ export declare class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketE
     constructor(options: KeepAliveWebSocketOptions);
     send(data: string | ArrayBufferLike | Blob | ArrayBufferView): this;
     ready(): Promise<void>;
-    waitOnce<K extends KeepAliveWebSocketEventNames>(event: K): Promise<ExtractSingleTuple<EventEmitter.ArgumentMap<KeepAliveWebSocketEvents>[K]>>;
+    waitOnce<K extends KeepAliveWebSocketEventNames>(event: K): Promise<EventEmitterReturnType<EventEmitter.ArgumentMap<KeepAliveWebSocketEvents>[K]>>;
     close(code?: number, reason?: string): void;
     connect(): Promise<this>;
     private reconnect;

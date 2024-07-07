@@ -7,7 +7,7 @@ export class KeepAliveWebSocket extends EventEmitter {
         this.reconnecting = false;
         this.closed = false;
         this.connectTime = Date.now();
-        this.minTimeBetweenReconnectsMS = 5000;
+        this.minTimeBetweenReconnectsMS = 0;
         this.url = options.url;
         if (options.WebSocket) {
             this.WebSocket = options.WebSocket;
@@ -34,41 +34,21 @@ export class KeepAliveWebSocket extends EventEmitter {
         if (this.connected) {
             return Promise.resolve();
         }
-        return new Promise((resolve, reject) => {
-            if (this.connected) {
-                resolve();
-                return;
-            }
-            const removeAllListeners = () => {
-                this.off("open", onOpen);
-                this.off("error", onError);
-                this.off("close", onClose);
-            };
-            const onOpen = () => {
-                removeAllListeners();
-                resolve();
-            };
-            const onError = () => {
-                removeAllListeners();
-                reject();
-            };
-            const onClose = () => {
-                removeAllListeners();
-                reject();
-            };
-            this.on("open", onOpen);
-            this.on("error", onError);
-            this.on("close", onClose);
-        });
+        return this.waitOnce("open");
     }
     waitOnce(event) {
         return new Promise((resolve) => {
             this.once(event, (...args) => {
-                if (args.length === 1) {
-                    resolve(args[0]);
-                }
-                else {
-                    resolve(args);
+                switch (args.length) {
+                    case 0:
+                        resolve(undefined);
+                        break;
+                    case 1:
+                        resolve(args[0]);
+                        break;
+                    default:
+                        resolve(args);
+                        break;
                 }
             });
         });
@@ -122,7 +102,6 @@ export class KeepAliveWebSocket extends EventEmitter {
         }
         catch (error) {
             this.emit("error", error);
-            this.reconnect();
         }
         finally {
             this.connecting = false;
