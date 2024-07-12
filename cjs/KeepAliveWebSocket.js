@@ -105,6 +105,7 @@ class KeepAliveWebSocket extends eventemitter3_1.EventEmitter {
         }
         catch (error) {
             this.emit("error", error);
+            this.reconnect();
         }
         finally {
             this.connecting = false;
