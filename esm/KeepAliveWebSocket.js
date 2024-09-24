@@ -23,11 +23,10 @@ export class KeepAliveWebSocket extends EventEmitter {
         }
     }
     send(data) {
-        var _a;
-        if (!this.connected) {
+        if (!this.connected || !this.websocket) {
             throw new Error("WebSocket not ready");
         }
-        (_a = this.websocket) === null || _a === void 0 ? void 0 : _a.send(data);
+        this.websocket.send(data);
         return this;
     }
     ready() {
@@ -102,14 +101,14 @@ export class KeepAliveWebSocket extends EventEmitter {
         }
         catch (error) {
             this.emit("error", error);
-            this.reconnect();
+            await this.reconnect();
         }
         finally {
             this.connecting = false;
         }
         return this;
     }
-    reconnect() {
+    async reconnect() {
         if (this.reconnecting) {
             return this;
         }
@@ -117,17 +116,16 @@ export class KeepAliveWebSocket extends EventEmitter {
         try {
             const timeSinceLastConnect = Date.now() - this.connectTime;
             if (timeSinceLastConnect < this.minTimeBetweenReconnectsMS) {
-                setTimeout(() => {
-                    this.connect();
-                }, this.minTimeBetweenReconnectsMS - timeSinceLastConnect);
+                await waitMS(this.minTimeBetweenReconnectsMS - timeSinceLastConnect);
             }
-            else {
-                this.connect();
-            }
+            await this.connect();
         }
         finally {
             this.reconnecting = false;
         }
         return this;
     }
+}
+function waitMS(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }

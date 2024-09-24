@@ -9,7 +9,6 @@ export type KeepAliveWebSocketEvents = {
 	error(error?: Error): void;
 	disconnect(): void;
 	close(): void;
-	test(a: number, b: number): void;
 };
 
 type KeepAliveWebSocketEventNames =
@@ -58,10 +57,10 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
 	}
 
 	send(data: string | ArrayBufferLike | Blob | ArrayBufferView) {
-		if (!this.connected) {
+		if (!this.connected || !this.websocket) {
 			throw new Error("WebSocket not ready");
 		}
-		this.websocket?.send(data);
+		this.websocket.send(data);
 		return this;
 	}
 
@@ -142,14 +141,14 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
 			this.websocket = websocket;
 		} catch (error) {
 			this.emit("error", error as Error);
-			this.reconnect();
+			await this.reconnect();
 		} finally {
 			this.connecting = false;
 		}
 		return this;
 	}
 
-	private reconnect() {
+	private async reconnect() {
 		if (this.reconnecting) {
 			return this;
 		}
@@ -157,15 +156,16 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
 		try {
 			const timeSinceLastConnect = Date.now() - this.connectTime;
 			if (timeSinceLastConnect < this.minTimeBetweenReconnectsMS) {
-				setTimeout(() => {
-					this.connect();
-				}, this.minTimeBetweenReconnectsMS - timeSinceLastConnect);
-			} else {
-				this.connect();
+				await waitMS(this.minTimeBetweenReconnectsMS - timeSinceLastConnect);
 			}
+			await this.connect();
 		} finally {
 			this.reconnecting = false;
 		}
 		return this;
 	}
+}
+
+function waitMS(ms: number) {
+	return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }

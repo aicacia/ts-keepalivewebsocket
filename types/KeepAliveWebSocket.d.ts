@@ -5,7 +5,6 @@ export type KeepAliveWebSocketEvents = {
     error(error?: Error): void;
     disconnect(): void;
     close(): void;
-    test(a: number, b: number): void;
 };
 type KeepAliveWebSocketEventNames = EventEmitterTypes.EventNames<KeepAliveWebSocketEvents>;
 type EventEmitterReturnType<T> = T extends [] ? void : T extends [infer R] ? R : T;
