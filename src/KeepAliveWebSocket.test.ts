@@ -35,7 +35,7 @@ tape("basic", async (assert: tape.Test) => {
 			minTimeBetweenReconnectsMS: 1000,
 		});
 
-		const message1Promise = websocket.waitOnce("message");
+		const message1Promise = websocket.message();
 		await websocket.ready();
 		websocket.send("Hello");
 		assert.equal(await message1Promise, "Hello");
@@ -44,7 +44,7 @@ tape("basic", async (assert: tape.Test) => {
 		wsServer.closeAllConnections();
 		await disconnectPromise;
 
-		const message2Promise = websocket.waitOnce("message");
+		const message2Promise = websocket.message();
 		await websocket.ready();
 		websocket.send("world!");
 		assert.equal(await message2Promise, "world!");

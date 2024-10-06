@@ -34,7 +34,7 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
 	private connected = false;
 	private connecting = false;
 	private reconnecting = false;
-	private closed = false;
+	private isClosed = false;
 	private websocket: WebSocket | undefined;
 	private connectTime = Date.now();
 	private minTimeBetweenReconnectsMS = 0;
@@ -71,6 +71,10 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
 		return this.waitOnce("open");
 	}
 
+	message() {
+		return this.waitOnce("message");
+	}
+
 	waitOnce<K extends KeepAliveWebSocketEventNames>(event: K) {
 		return new Promise<
 			EventEmitterReturnType<KeepAliveWebSocketEventArguments[K]>
@@ -94,7 +98,7 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
 	close(code?: number, reason?: string) {
 		this.connected = false;
 		this.connecting = false;
-		this.closed = true;
+		this.isClosed = true;
 		if (this.websocket) {
 			this.websocket.close(code, reason);
 		} else {
@@ -124,7 +128,7 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
 			websocket.addEventListener("close", () => {
 				this.websocket = undefined;
 				this.connected = false;
-				if (this.closed) {
+				if (this.isClosed) {
 					this.emit("close");
 				} else {
 					this.emit("disconnect");
