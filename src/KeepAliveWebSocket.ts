@@ -17,10 +17,10 @@ type KeepAliveWebSocketEventArguments =
 	EventEmitterTypes.ArgumentMap<KeepAliveWebSocketEvents>;
 type EventEmitterReturnType<T> = T extends []
 	? // biome-ignore lint/suspicious/noConfusingVoidType: <explanation>
-		void
+	void
 	: T extends [infer R]
-		? R
-		: T;
+	? R
+	: T;
 
 export type KeepAliveWebSocketOptions = {
 	url: () => Promise<string> | string;
@@ -57,10 +57,9 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
 	}
 
 	send(data: string | ArrayBufferLike | Blob | ArrayBufferView) {
-		if (!this.connected || !this.websocket) {
-			throw new Error("WebSocket not ready");
-		}
-		this.websocket.send(data);
+		this.ready().then(() =>
+			this.websocket!.send(data)
+		);
 		return this;
 	}
 
