@@ -4,11 +4,11 @@ import {
 } from "eventemitter3";
 
 export type KeepAliveWebSocketEvents = {
-	open(): void;
-	message(data: string | ArrayBufferLike | Blob | ArrayBufferView): void;
-	error(error?: Error): void;
-	disconnect(): void;
-	close(): void;
+	open(this: KeepAliveWebSocket): void;
+	message(this: KeepAliveWebSocket, data: string | ArrayBufferLike | Blob | ArrayBufferView): void;
+	error(this: KeepAliveWebSocket, error?: Error): void;
+	disconnect(this: KeepAliveWebSocket): void;
+	close(this: KeepAliveWebSocket): void;
 };
 
 type KeepAliveWebSocketEventNames =
@@ -56,18 +56,18 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
 		}
 	}
 
-	send(data: string | ArrayBufferLike | Blob | ArrayBufferView) {
-		this.ready().then(() =>
-			this.websocket!.send(data)
-		);
+	async send(data: string | ArrayBufferLike | Blob | ArrayBufferView) {
+		await this.ready();
+		// biome-ignore lint/style/noNonNullAssertion: ready
+		this.websocket!.send(data);
 		return this;
 	}
 
-	ready() {
-		if (this.connected) {
-			return Promise.resolve();
+	async ready() {
+		if (!this.connected) {
+			await this.waitOnce("open");
 		}
-		return this.waitOnce("open");
+		return this;
 	}
 
 	message() {

@@ -1,6 +1,6 @@
 {
 	"name": "@aicacia/keepalivewebsocket",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "keep alive websocket",
 	"repository": {
 		"type": "git",
@@ -26,16 +26,14 @@
 		"preCommit": "npm run format && npm run lint && npm run coverage",
 		"prepare": "husky"
 	},
-	"keywords": [
-		"hash"
-	],
+	"keywords": ["hash"],
 	"author": "Nathan Faucett",
 	"license": "(MIT OR Apache-2.0)",
 	"readmeFilename": "README.md",
 	"devDependencies": {
 		"@biomejs/biome": "1",
 		"@rollup/plugin-commonjs": "28",
-		"@rollup/plugin-node-resolve": "15",
+		"@rollup/plugin-node-resolve": "16",
 		"@rollup/plugin-terser": "0",
 		"@rollup/plugin-typescript": "12",
 		"@types/tape": "5",
@@ -60,16 +58,8 @@
 		"eventemitter3": "5"
 	},
 	"nyc": {
-		"include": [
-			"src"
-		],
-		"exclude": [
-			"src/**/*.test.*",
-			"src/**/*.benchmark.*"
-		],
-		"extension": [
-			".ts",
-			".tsx"
-		]
+		"include": ["src"],
+		"exclude": ["src/**/*.test.*", "src/**/*.benchmark.*"],
+		"extension": [".ts", ".tsx"]
 	}
 }
