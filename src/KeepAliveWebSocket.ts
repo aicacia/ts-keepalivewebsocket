@@ -26,7 +26,7 @@ type EventEmitterReturnType<T> = T extends []
   : T;
 
 export type KeepAliveWebSocketOptions = {
-  url: () => Promise<string> | string;
+  url: string | (() => Promise<string> | string);
   minTimeBetweenReconnectsMS?: number;
   autoconnect?: boolean;
   binaryType?: "blob" | "arraybuffer";
@@ -34,7 +34,7 @@ export type KeepAliveWebSocketOptions = {
 };
 
 export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
-  private url: () => Promise<string> | string;
+  private url: string | (() => Promise<string> | string);
   private connected = false;
   private connecting = false;
   private reconnecting = false;
@@ -80,6 +80,14 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
       this.websocket.binaryType = binaryType;
     }
     return this;
+  }
+
+  getReadyState() {
+    return this.websocket ? this.websocket.readyState : WebSocket.CLOSED;
+  }
+
+  isReady() {
+    return this.getReadyState() === WebSocket.OPEN;
   }
 
   async send(data: string | ArrayBufferLike | Blob | ArrayBufferView) {
@@ -143,7 +151,8 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
     this.connecting = true;
     try {
       this.connectTime = Date.now();
-      const websocket = new this.WebSocket(await this.url());
+      const url = typeof this.url === "function" ? await this.url() : this.url;
+      const websocket = new this.WebSocket(url);
 
       if (this.binaryType) {
         websocket.binaryType = this.binaryType;
