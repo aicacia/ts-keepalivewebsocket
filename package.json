@@ -1,6 +1,6 @@
 {
 	"name": "@aicacia/keepalivewebsocket",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"description": "keep alive websocket",
 	"repository": {
 		"type": "git",

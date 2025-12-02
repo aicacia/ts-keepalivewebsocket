@@ -38,7 +38,7 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
   private connected = false;
   private connecting = false;
   private reconnecting = false;
-  private isClosed = false;
+  private closed = false;
   private websocket: WebSocket | undefined;
   private connectTime = Date.now();
   private minTimeBetweenReconnectsMS = 0;
@@ -90,6 +90,10 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
     return this.getReadyState() === WebSocket.OPEN;
   }
 
+  isClosed() {
+    return this.closed;
+  }
+
   async send(data: string | ArrayBufferLike | Blob | ArrayBufferView) {
     await this.ready();
     // biome-ignore lint/style/noNonNullAssertion: ready
@@ -131,7 +135,7 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
   close(code?: number, reason?: string) {
     this.connected = false;
     this.connecting = false;
-    this.isClosed = true;
+    this.closed = true;
     if (this.websocket) {
       this.websocket.close(code, reason);
     } else {
@@ -147,7 +151,7 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
     if (this.connecting) {
       return this;
     }
-    this.isClosed = false;
+    this.closed = false;
     this.connecting = true;
     try {
       this.connectTime = Date.now();
@@ -168,7 +172,7 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
       websocket.addEventListener("close", () => {
         this.websocket = undefined;
         this.connected = false;
-        if (this.isClosed) {
+        if (this.closed) {
           this.emit("close");
         } else {
           this.emit("disconnect");
