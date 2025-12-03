@@ -28,6 +28,7 @@ type EventEmitterReturnType<T> = T extends []
 export type KeepAliveWebSocketOptions = {
   url: string | (() => Promise<string> | string);
   minTimeBetweenReconnectsMS?: number;
+  maxTimeBetweenReconnectsMS?: number;
   autoconnect?: boolean;
   binaryType?: "blob" | "arraybuffer";
   WebSocket?: typeof WebSocket;
@@ -42,6 +43,8 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
   private websocket: WebSocket | undefined;
   private connectTime = Date.now();
   private minTimeBetweenReconnectsMS = 0;
+  private maxTimeBetweenReconnectsMS = 30000;
+  private reconnectAttempts = 0;
   private binaryType: "blob" | "arraybuffer" | undefined = undefined;
   private WebSocket: typeof WebSocket;
 
@@ -55,6 +58,9 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
     }
     if (options.minTimeBetweenReconnectsMS) {
       this.minTimeBetweenReconnectsMS = options.minTimeBetweenReconnectsMS;
+    }
+    if (options.maxTimeBetweenReconnectsMS) {
+      this.maxTimeBetweenReconnectsMS = options.maxTimeBetweenReconnectsMS;
     }
     if (options.binaryType) {
       this.binaryType = options.binaryType;
@@ -165,6 +171,7 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
       const onOpen = () => {
         websocket.removeEventListener("open", onOpen);
         this.connected = true;
+        this.reconnectAttempts = 0;
         this.emit("open");
       };
       websocket.addEventListener("open", onOpen);
@@ -202,9 +209,18 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
     }
     this.reconnecting = true;
     try {
+      this.reconnectAttempts++;
+
+      const exponentialDelay =
+        this.minTimeBetweenReconnectsMS * 2 ** (this.reconnectAttempts - 1);
+      const reconnectDelay = Math.min(
+        exponentialDelay,
+        this.maxTimeBetweenReconnectsMS
+      );
+
       const timeSinceLastConnect = Date.now() - this.connectTime;
-      if (timeSinceLastConnect < this.minTimeBetweenReconnectsMS) {
-        await waitMS(this.minTimeBetweenReconnectsMS - timeSinceLastConnect);
+      if (timeSinceLastConnect < reconnectDelay) {
+        await waitMS(reconnectDelay - timeSinceLastConnect);
       }
       await this.connect();
     } finally {
