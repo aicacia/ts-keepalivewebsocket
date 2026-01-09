@@ -43,7 +43,7 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
   private reconnecting = false;
   private closed = false;
   private websocket: WebSocket | undefined;
-  private connectTime = Date.now();
+  private lastConnectAttemptTime = Date.now();
   private minTimeBetweenReconnectsMS = 0;
   private maxTimeBetweenReconnectsMS = 30000;
   private minJitterMS = 0;
@@ -182,7 +182,7 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
     this.closed = false;
     this.connecting = true;
     try {
-      this.connectTime = Date.now();
+      this.lastConnectAttemptTime = Date.now();
       const url = typeof this.url === "function" ? await this.url() : this.url;
       const websocket = new this.WebSocket(url);
 
@@ -252,7 +252,7 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
         reconnectDelay > 0 ? this.minJitterMS + Math.random() * jitterRange : 0;
       const totalDelay = reconnectDelay + jitter;
 
-      const timeSinceLastConnect = Date.now() - this.connectTime;
+      const timeSinceLastConnect = Date.now() - this.lastConnectAttemptTime;
       if (timeSinceLastConnect < totalDelay) {
         await waitMS(totalDelay - timeSinceLastConnect);
       }

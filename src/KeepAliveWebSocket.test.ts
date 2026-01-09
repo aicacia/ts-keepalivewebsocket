@@ -302,3 +302,84 @@ tape(
     }
   }
 );
+
+tape(
+  "respects min time between connects even for quick disconnects",
+  async (assert: tape.Test) => {
+    let websocket: KeepAliveWebSocket | undefined;
+    let httpServer: Server | undefined;
+    let wsServer: WebSocketServer | undefined;
+    const connectionAttempts: number[] = [];
+    let connectionCount = 0;
+
+    try {
+      httpServer = createServer((request, response) => {
+        response.writeHead(404);
+        response.end();
+      });
+      httpServer.listen(7827);
+
+      wsServer = new WebSocketServer({
+        httpServer,
+        autoAcceptConnections: true,
+      });
+
+      wsServer.on("connect", (connection) => {
+        connectionAttempts.push(Date.now());
+        connectionCount++;
+
+        // Close the connection immediately after accepting
+        // This simulates a quick disconnect scenario
+        setTimeout(() => {
+          connection.close();
+        }, 10);
+      });
+
+      websocket = new KeepAliveWebSocket({
+        url: () => "ws://localhost:7827",
+        WebSocket: WebSocket as never,
+        autoconnect: true,
+        minTimeBetweenReconnectsMS: 500, // 500ms minimum between attempts
+        maxTimeBetweenReconnectsMS: 500, // Same as min to test exact timing
+        minJitterMS: 0, // No jitter for precise testing
+        maxJitterMS: 0,
+      });
+
+      // Wait for first connection
+      await websocket.ready();
+
+      // Wait for quick disconnect and subsequent reconnect
+      await websocket.waitOnce("disconnect");
+      await websocket.ready();
+
+      assert.ok(
+        connectionAttempts.length >= 2,
+        "Should have at least 2 connection attempts"
+      );
+
+      if (connectionAttempts.length >= 2) {
+        const timeBetweenAttempts =
+          connectionAttempts[1] - connectionAttempts[0];
+
+        // Even though the connection succeeded and then quickly disconnected,
+        // the next connection attempt should still respect the minimum time
+        assert.ok(
+          timeBetweenAttempts >= 500,
+          `Time between connection attempts should be at least 500ms, got ${timeBetweenAttempts}ms`
+        );
+
+        // Allow tolerance for timing overhead and system variability
+        assert.ok(
+          timeBetweenAttempts < 1000,
+          `Time between connection attempts should be reasonably close to 500ms, got ${timeBetweenAttempts}ms`
+        );
+      }
+
+      assert.end();
+    } finally {
+      websocket?.close();
+      wsServer?.closeAllConnections();
+      httpServer?.close();
+    }
+  }
+);
