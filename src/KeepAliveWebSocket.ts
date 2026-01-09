@@ -19,7 +19,7 @@ type KeepAliveWebSocketEventNames =
 type KeepAliveWebSocketEventArguments =
   EventEmitterTypes.ArgumentMap<KeepAliveWebSocketEvents>;
 type EventEmitterReturnType<T> = T extends []
-  ? // biome-ignore lint/suspicious/noConfusingVoidType: <explanation>
+  ? // biome-ignore lint/suspicious/noConfusingVoidType: type magic
     void
   : T extends [infer R]
   ? R
@@ -29,6 +29,8 @@ export type KeepAliveWebSocketOptions = {
   url: string | (() => Promise<string> | string);
   minTimeBetweenReconnectsMS?: number;
   maxTimeBetweenReconnectsMS?: number;
+  minJitterMS?: number;
+  maxJitterMS?: number;
   autoconnect?: boolean;
   binaryType?: "blob" | "arraybuffer";
   WebSocket?: typeof WebSocket;
@@ -44,6 +46,8 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
   private connectTime = Date.now();
   private minTimeBetweenReconnectsMS = 0;
   private maxTimeBetweenReconnectsMS = 30000;
+  private minJitterMS = 0;
+  private maxJitterMS = 300;
   private reconnectAttempts = 0;
   private binaryType: "blob" | "arraybuffer" | undefined = undefined;
   private WebSocket: typeof WebSocket;
@@ -61,6 +65,24 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
     }
     if (options.maxTimeBetweenReconnectsMS) {
       this.maxTimeBetweenReconnectsMS = options.maxTimeBetweenReconnectsMS;
+    }
+    if (options.minJitterMS) {
+      this.minJitterMS = options.minJitterMS;
+    }
+    if (options.maxJitterMS) {
+      this.maxJitterMS = options.maxJitterMS;
+    }
+    if (this.maxJitterMS < this.minJitterMS) {
+      [this.minJitterMS, this.maxJitterMS] = [
+        this.maxJitterMS,
+        this.minJitterMS,
+      ];
+    }
+    if (this.maxTimeBetweenReconnectsMS < this.minTimeBetweenReconnectsMS) {
+      [this.minTimeBetweenReconnectsMS, this.maxTimeBetweenReconnectsMS] = [
+        this.maxTimeBetweenReconnectsMS,
+        this.minTimeBetweenReconnectsMS,
+      ];
     }
     if (options.binaryType) {
       this.binaryType = options.binaryType;
@@ -211,16 +233,28 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
     try {
       this.reconnectAttempts++;
 
-      const exponentialDelay =
-        this.minTimeBetweenReconnectsMS * 2 ** (this.reconnectAttempts - 1);
-      const reconnectDelay = Math.min(
-        exponentialDelay,
-        this.maxTimeBetweenReconnectsMS
-      );
+      const attemptIndex = this.reconnectAttempts - 1; // 0-based for retries
+      const baseDelay = Math.max(this.minTimeBetweenReconnectsMS, 1);
+      const hasZeroBase = this.minTimeBetweenReconnectsMS === 0;
+
+      const reconnectDelay =
+        attemptIndex === 0
+          ? hasZeroBase
+            ? 0
+            : Math.min(baseDelay, this.maxTimeBetweenReconnectsMS)
+          : Math.min(
+              baseDelay * 2 ** (attemptIndex - 1),
+              this.maxTimeBetweenReconnectsMS
+            );
+
+      const jitterRange = this.maxJitterMS - this.minJitterMS;
+      const jitter =
+        reconnectDelay > 0 ? this.minJitterMS + Math.random() * jitterRange : 0;
+      const totalDelay = reconnectDelay + jitter;
 
       const timeSinceLastConnect = Date.now() - this.connectTime;
-      if (timeSinceLastConnect < reconnectDelay) {
-        await waitMS(reconnectDelay - timeSinceLastConnect);
+      if (timeSinceLastConnect < totalDelay) {
+        await waitMS(totalDelay - timeSinceLastConnect);
       }
       await this.connect();
     } finally {

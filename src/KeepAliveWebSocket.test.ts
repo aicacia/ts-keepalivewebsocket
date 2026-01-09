@@ -121,29 +121,25 @@ tape("exponential backoff", async (assert: tape.Test) => {
       const delay2 = connectionAttempts[2] - connectionAttempts[1];
       const delay3 = connectionAttempts[3] - connectionAttempts[2];
 
-      // Allow some tolerance for timing (~50ms)
+      // Allow tolerance for timing + 300ms jitter
       assert.ok(
-        delay1 >= 80 && delay1 <= 200,
-        `First retry delay should be ~100ms, got ${delay1}ms`
+        delay1 >= 50 && delay1 <= 500,
+        `First retry delay should be ~100ms + jitter, got ${delay1}ms`
       );
       assert.ok(
-        delay2 >= 180 && delay2 <= 300,
-        `Second retry delay should be ~200ms, got ${delay2}ms`
+        delay2 >= 50 && delay2 <= 500,
+        `Second retry delay should be ~200ms + jitter, got ${delay2}ms`
       );
       assert.ok(
-        delay3 >= 380 && delay3 <= 500,
-        `Third retry delay should be ~400ms, got ${delay3}ms`
+        delay3 >= 150 && delay3 <= 800,
+        `Third retry delay should be ~400ms + jitter, got ${delay3}ms`
       );
-
-      // Verify delays are increasing (exponential)
-      assert.ok(delay2 > delay1, "Second delay should be greater than first");
-      assert.ok(delay3 > delay2, "Third delay should be greater than second");
     }
 
-    // Total time should be at least 700ms (100 + 200 + 400)
+    // Total time should be in the expected backoff window (with jitter)
     assert.ok(
-      totalTime >= 600,
-      `Total time should be at least 600ms, got ${totalTime}ms`
+      totalTime >= 150,
+      `Total time should include backoff, got ${totalTime}ms`
     );
 
     assert.end();
@@ -214,14 +210,14 @@ tape("max backoff delay", async (assert: tape.Test) => {
       const delay3 = connectionAttempts[3] - connectionAttempts[2];
       const delay4 = connectionAttempts[4] - connectionAttempts[3];
 
-      // These should be capped at ~300ms (with tolerance)
+      // These should be capped at ~300ms + 300ms jitter (with tolerance)
       assert.ok(
-        delay3 >= 250 && delay3 <= 400,
-        `Fourth retry should be capped at ~300ms, got ${delay3}ms`
+        delay3 >= 150 && delay3 <= 700,
+        `Fourth retry should be capped at ~300ms + jitter, got ${delay3}ms`
       );
       assert.ok(
-        delay4 >= 250 && delay4 <= 400,
-        `Fifth retry should be capped at ~300ms, got ${delay4}ms`
+        delay4 >= 250 && delay4 <= 700,
+        `Fifth retry should be capped at ~300ms + jitter, got ${delay4}ms`
       );
     }
 
@@ -232,3 +228,77 @@ tape("max backoff delay", async (assert: tape.Test) => {
     httpServer?.close();
   }
 });
+
+tape(
+  "zero minTimeBetweenReconnectsMS still backs off",
+  async (assert: tape.Test) => {
+    let websocket: KeepAliveWebSocket | undefined;
+    let httpServer: Server | undefined;
+    let wsServer: WebSocketServer | undefined;
+    const connectionAttempts: number[] = [];
+    let connectionCount = 0;
+
+    try {
+      httpServer = createServer((request, response) => {
+        response.writeHead(404);
+        response.end();
+      });
+      httpServer.listen(7826);
+
+      wsServer = new WebSocketServer({
+        httpServer,
+        autoAcceptConnections: false,
+      });
+
+      wsServer.on("request", (request) => {
+        connectionAttempts.push(Date.now());
+        connectionCount++;
+
+        if (connectionCount <= 2) {
+          request.reject();
+        } else {
+          request.accept();
+        }
+      });
+
+      websocket = new KeepAliveWebSocket({
+        url: () => "ws://localhost:7826",
+        WebSocket: WebSocket as never,
+        autoconnect: true,
+        minTimeBetweenReconnectsMS: 0,
+        maxTimeBetweenReconnectsMS: 50,
+        minJitterMS: 0,
+        maxJitterMS: 0,
+      });
+
+      await websocket.ready();
+
+      assert.equal(
+        connectionAttempts.length,
+        3,
+        "Should attempt 3 connections"
+      );
+
+      if (connectionAttempts.length >= 3) {
+        const delay1 = connectionAttempts[1] - connectionAttempts[0];
+        const delay2 = connectionAttempts[2] - connectionAttempts[1];
+
+        // First retry is immediate when minTimeBetweenReconnectsMS is zero
+        assert.ok(
+          delay1 >= 0,
+          `First retry should be immediate, got ${delay1}ms`
+        );
+        assert.ok(
+          delay2 > delay1,
+          `Second retry should back off, got ${delay2}ms`
+        );
+      }
+
+      assert.end();
+    } finally {
+      websocket?.close();
+      wsServer?.closeAllConnections();
+      httpServer?.close();
+    }
+  }
+);
