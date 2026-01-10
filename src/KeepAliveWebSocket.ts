@@ -107,9 +107,11 @@ export class KeepAliveWebSocket extends EventEmitter<KeepAliveWebSocketEvents> {
     return this.websocket;
   }
 
-  setUrl(url: () => Promise<string> | string) {
-    this.url = url;
-    this.reconnectAttempts = 0; // Reset attempts when URL changes
+  setUrl(url: string | (() => Promise<string> | string)) {
+    if (this.url !== url) {
+      this.url = url;
+      this.reconnectAttempts = 0; // Reset attempts when URL changes
+    }
     this.close();
     return this.connect();
   }
